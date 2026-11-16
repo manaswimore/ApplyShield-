@@ -1,0 +1,1 @@
+Static HTML/CSS/Vanilla JavaScript frontend for ApplyShield. Serve this folder with a local static server (for example `python -m http.server 5500`).

@@ -1,0 +1,113 @@
+{
+  "Comment": "ApplyShield recruitment risk analysis workflow",
+  "StartAt": "ExtractText",
+  "States": {
+    "ExtractText": {
+      "Type": "Task",
+      "Resource": "${ExtractArn}",
+      "Next": "DetectSignals",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.workflowError",
+          "Next": "MarkFailed"
+        }
+      ]
+    },
+    "DetectSignals": {
+      "Type": "Task",
+      "Resource": "${DetectArn}",
+      "ResultPath": "$.detection",
+      "Next": "VerificationAnalysis",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.workflowError",
+          "Next": "MarkFailed"
+        }
+      ]
+    },
+    "VerificationAnalysis": {
+      "Type": "Task",
+      "Resource": "${VerifyArn}",
+      "ResultPath": "$.verification",
+      "Next": "CalculateScore",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.workflowError",
+          "Next": "MarkFailed"
+        }
+      ]
+    },
+    "CalculateScore": {
+      "Type": "Task",
+      "Resource": "${ScoreArn}",
+      "ResultPath": "$.scoring",
+      "Next": "SaveReport",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.workflowError",
+          "Next": "MarkFailed"
+        }
+      ]
+    },
+    "SaveReport": {
+      "Type": "Task",
+      "Resource": "${ReportArn}",
+      "End": true,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.workflowError",
+          "Next": "MarkFailed"
+        }
+      ]
+    },
+    "MarkFailed": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${FailureHandlerArn}",
+        "Payload.$": "$"
+      },
+      "ResultPath": null,
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "End": true
+    }
+  }
+}
